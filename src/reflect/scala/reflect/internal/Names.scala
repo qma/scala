@@ -26,8 +26,8 @@ trait Names extends api.Names with LowPriorityNames {
 
 // Operations -------------------------------------------------------------
 
-  private final val HASH_SIZE  = 0x8000
-  private final val HASH_MASK  = 0x7FFF
+  private final val HASH_SIZE  = 0x80000
+  private final val HASH_MASK  = 0x7FFFF
   private final val NAME_SIZE  = 0x20000
 
   final val nameDebug = false
@@ -43,13 +43,34 @@ trait Names extends api.Names with LowPriorityNames {
   private val typeHashtable = new Array[TypeName](HASH_SIZE)
 
   /** The hashcode of a name. */
-  private def hashValue(cs: Array[Char], offset: Int, len: Int): Int =
+  private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
+    // Computing hash of the full string is actually more performant, because hash colisions cause
+    // excessive equals() calls which are even more expensive.
+
+    if (len > 0) {
+      var h = len
+      var i = 0
+      while(i < len) {
+        h = h * 31 + cs(offset + i)
+        i += 1
+      }
+      h
+    } else 0
+
+    /*
+    Previously hashValue is a shortcut that only mixed len, the first, last and middle char,
+    which causes bad hash colisions because of the following:
+      * first char is very likely similar due to package prefix
+      * last char is very likely a number due to $123 suffix
+
     if (len > 0)
       (len * (41 * 41 * 41) +
        cs(offset) * (41 * 41) +
        cs(offset + len - 1) * 41 +
        cs(offset + (len >> 1)))
-    else 0;
+    else 0
+    */
+  }
 
   /** Is (the ASCII representation of) name at given index equal to
    *  cs[offset..offset+len-1]?
@@ -58,6 +79,7 @@ trait Names extends api.Names with LowPriorityNames {
     var i = 0
     while ((i < len) && (chrs(index + i) == cs(offset + i)))
       i += 1;
+    // if (i != len) Console.print("@")
     i == len
   }
 
@@ -92,8 +114,46 @@ trait Names extends api.Names with LowPriorityNames {
   protected def newTermName(cs: Array[Char], offset: Int, len: Int, cachedString: String): TermName = {
     val h = hashValue(cs, offset, len) & HASH_MASK
     var n = termHashtable(h)
-    while ((n ne null) && (n.length != len || !equals(n.start, cs, offset, len)))
+    var lookups = 0
+    while ((n ne null) && (n.length != len || !equals(n.start, cs, offset, len))) {
       n = n.next
+      lookups += 1
+    }
+
+/*
+    if (lookups > 3) {
+      Console.println("colisions\t" + lookups + "\t" + new String(cs, offset, len))
+      var p = termHashtable(h)
+      while (p ne null) {
+        val pHash = hashValue(chrs, p.start, p.length)
+        Console.println("\t" + pHash.toString + "\t" + p.toString)
+        p = p.next
+      }
+      Console.println
+    }
+*/
+/*
+    if (lookups > 3) {
+      var stats = new Array[Int](100)
+      var i = 0
+      for (i <- 0 until 100) stats(i) = 0
+      var total = 0
+      while (i < HASH_SIZE) {
+        var num = 0
+        var s = termHashtable(i)
+        while (s ne null) {
+          s = s.next
+          num += 1
+          total += 1
+        }
+        stats(num) += 1
+        i += 1
+        //Console.print(num + "")
+      }
+      for (i <- 0 until 20) Console.print("[" + i + "]=" + stats(i) + "\t")
+      Console.println("\nTotal=" + total)
+    }
+*/
 
     if (n ne null) n
     else {
