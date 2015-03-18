@@ -1049,7 +1049,8 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     /** The encoded full path name of this symbol, where outer names and inner names
      *  are separated by periods.
      */
-    final def fullName: String = fullName('.')
+    lazy val fullName_ = fullName('.')
+    final def fullName: String = fullName_
 
     /**
      *  Symbol creation implementations.
