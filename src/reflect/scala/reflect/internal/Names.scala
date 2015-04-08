@@ -44,18 +44,16 @@ trait Names extends api.Names with LowPriorityNames {
 
   /** The hashcode of a name. */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
-    // Computing hash of the full string is actually more performant, because hash colisions cause
-    // excessive equals() calls which are even more expensive.
+    // OPT: Computing hash of the full string is actually more performant, because
+    // hash colisions cause excessive equals() calls which are even more expensive.
 
-    if (len > 0) {
-      var h = len
-      var i = 0
-      while(i < len) {
-        h = h * 31 + cs(offset + i)
-        i += 1
-      }
-      h
-    } else 0
+    var h = len
+    var i = 0
+    while(i < len) {
+      h = h * 31 + cs(offset + i)
+      i += 1
+    }
+    h
 
     /*
     Previously hashValue is a shortcut that only mixed len, the first, last and middle char,
@@ -79,7 +77,8 @@ trait Names extends api.Names with LowPriorityNames {
     var i = 0
     while ((i < len) && (chrs(index + i) == cs(offset + i)))
       i += 1;
-    // if (i != len) Console.print("@")
+    // DEBUG: distribution of equal() calls due to hash colision (.), or final equality check (@)
+    // if (i != len) Console.print("@") else Console.print(".")
     i == len
   }
 
@@ -114,13 +113,14 @@ trait Names extends api.Names with LowPriorityNames {
   protected def newTermName(cs: Array[Char], offset: Int, len: Int, cachedString: String): TermName = {
     val h = hashValue(cs, offset, len) & HASH_MASK
     var n = termHashtable(h)
-    var lookups = 0
+    //var lookups = 0
     while ((n ne null) && (n.length != len || !equals(n.start, cs, offset, len))) {
       n = n.next
-      lookups += 1
+      //lookups += 1
     }
 
 /*
+    // DEBUG: see sample chain of names with same hash
     if (lookups > 3) {
       Console.println("colisions\t" + lookups + "\t" + new String(cs, offset, len))
       var p = termHashtable(h)
@@ -133,6 +133,7 @@ trait Names extends api.Names with LowPriorityNames {
     }
 */
 /*
+    // DEBUG: generate histogram of colision chain length
     if (lookups > 3) {
       var stats = new Array[Int](100)
       var i = 0

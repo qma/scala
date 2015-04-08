@@ -84,7 +84,9 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
    */
   def lookupName(name: String, directory: Boolean): AbstractFile = {
     val child = givenPath / name
-    if ((child.isDirectory && directory) || (child.isFile && !directory)) new PlainFile(child)
+    // OPT: this emilinates uneccessary IO calls to isDirectory and isFile by ~half
+    // was: if ((child.isDirectory && directory) || (child.isFile && !directory)) new PlainFile(child)
+    if ((directory && child.isDirectory) || (!directory && child.isFile)) new PlainFile(child)
     else null
   }
 

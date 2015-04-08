@@ -1301,7 +1301,7 @@ trait Types extends api.Types { self: SymbolTable =>
    *  A type that can be passed to unique(..) and be stored in the uniques map.
    */
   abstract class UniqueType extends Type with Product {
-    final override val hashCode = computeHashCode
+    final override lazy val hashCode = computeHashCode
     protected def computeHashCode = scala.runtime.ScalaRunTime._hashCode(this)
   }
 
